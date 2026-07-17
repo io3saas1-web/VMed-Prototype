@@ -136,8 +136,9 @@ async function verifyFirebaseCaller(request) {
 }
 
 async function loginToFemet() {
-  const account = process.env.FEMET_ACCOUNT;
-  const password = process.env.FEMET_PASSWORD;
+  const rawAccount = process.env.FEMET_ACCOUNT ?? "";
+  const password = process.env.FEMET_PASSWORD ?? "";
+  const account = rawAccount.trim();
   const baseUrl =
     process.env.FEMET_BASE_URL || DEFAULT_FEMET_BASE_URL;
 
@@ -152,6 +153,7 @@ async function loginToFemet() {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+      "User-Agent": "VMed-Prototype-Netlify/1.0",
     },
     body: JSON.stringify({ account, password }),
   });
@@ -160,8 +162,22 @@ async function loginToFemet() {
   const token = pickToken(body);
 
   if (!response.ok || !token) {
+    // This deliberately logs only lengths and the FEMET error response.
+    // It never logs the account or password values.
+    console.error("FEMET_AUTH_DIAGNOSTIC", {
+      status: response.status,
+      statusText: response.statusText,
+      responseBody: body,
+      accountLength: account.length,
+      passwordLength: password.length,
+      accountHadOuterWhitespace: rawAccount !== account,
+      passwordHasOuterWhitespace: password !== password.trim(),
+      baseUrl,
+    });
+
     throw new Error(
-      `FEMET authentication failed (HTTP ${response.status}).`
+      `FEMET authentication failed (HTTP ${response.status}). ` +
+      "Open the Netlify function log and find FEMET_AUTH_DIAGNOSTIC."
     );
   }
 
