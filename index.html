@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VMed Prototype</title>
+<!-- Netlify deployment version: FEMET access runs through a serverless function. -->
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/@daily-co/daily-js"></script>
+
+<style>
+  :root {
+    --bg: #0f1720;
+    --panel: #17212c;
+    --border: #263241;
+    --text: #e6edf3;
+    --muted: #8b98a5;
+    --accent: #3b9dff;
+    --ok: #3ecf8e;
+    --warn: #e8b73b;
+    --bad: #e8556b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ---------- Login screen ---------- */
+  #login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  #login-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 32px;
+    width: 100%;
+    max-width: 360px;
+  }
+  #login-box h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  #login-box p.sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 24px;
+  }
+  #login-box label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin: 14px 0 6px;
+  }
+  #login-box input {
+    width: 100%;
+    padding: 10px 12px;
+    background: #0f1720;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  #login-box button {
+    width: 100%;
+    margin-top: 22px;
+    padding: 11px;
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #login-box button:disabled { opacity: 0.6; cursor: default; }
+  #login-error {
+    color: var(--bad);
+    font-size: 13px;
+    margin-top: 14px;
+    display: none;
+  }
+
+  /* ---------- App shell ---------- */
+  #app-screen { display: none; min-height: 100vh; flex-direction: column; }
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  #topbar .who { font-size: 13px; color: var(--muted); }
+  #topbar .who strong { color: var(--text); }
+  #logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  #status-line {
+    padding: 8px 20px;
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  #status-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--muted);
+    display: inline-block;
+  }
+  #status-dot.good { background: var(--ok); }
+  #status-dot.medium { background: var(--warn); }
+  #status-dot.bad { background: var(--bad); }
+
+  #main-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 20px;
+  }
+  #main-grid.with-vitals { grid-template-columns: 2fr 1fr; }
+  @media (max-width: 800px) {
+    #main-grid.with-vitals { grid-template-columns: 1fr; }
+  }
+
+  #video-panel {
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    min-height: 420px;
+    border: 1px solid var(--border);
+  }
+  #video-frame { width: 100%; height: 100%; min-height: 420px; border: none; }
+
+  #vitals-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+  #vitals-panel h2 {
+    font-size: 14px;
+    margin: 0 0 4px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  #vitals-meta { font-size: 12px; color: var(--muted); }
+
+  #patient-selector-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  #patient-selector-wrap label {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  #patient-select {
+    width: 100%;
+    padding: 9px 10px;
+    background: #0f1720;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+  }
+  #patient-select:focus {
+    border-color: var(--accent);
+  }
+  #vitals-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .vital-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: #0f1720;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .vital-row .k { color: var(--muted); }
+  .vital-row .v { font-weight: 600; }
+  #vitals-error {
+    color: var(--bad);
+    font-size: 13px;
+    display: none;
+  }
+
+  /* ---------- Post-login meeting name prompt ---------- */
+  #meeting-name-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(5, 12, 20, 0.78);
+    backdrop-filter: blur(5px);
+  }
+  #meeting-name-box {
+    width: 100%;
+    max-width: 420px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  }
+  #meeting-name-box h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+  }
+  #meeting-name-box p {
+    margin: 0 0 20px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  #meeting-name-box label {
+    display: block;
+    margin: 0 0 6px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  #meeting-name-box input {
+    width: 100%;
+    padding: 11px 12px;
+    background: #0f1720;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  #meeting-name-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  #meeting-name-actions button {
+    flex: 1;
+    padding: 11px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  #join-meeting-btn {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+  }
+  #meeting-logout-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  #meeting-name-error {
+    display: none;
+    margin-top: 12px;
+    color: var(--bad);
+    font-size: 13px;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ======================= LOGIN SCREEN ======================= -->
+<div id="login-screen">
+  <div id="login-box">
+    <h1>VMed Prototype</h1>
+    <p class="sub">Sign in to join the session</p>
+    <form id="login-form">
+      <label for="email">Email</label>
+      <input type="email" id="email" required autocomplete="username" />
+      <label for="password">Password</label>
+      <input type="password" id="password" required autocomplete="current-password" />
+
+      <button type="submit" id="login-submit">Sign in</button>
+      <div id="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= APP SCREEN ======================= -->
+<div id="app-screen">
+
+  <div id="meeting-name-modal">
+    <div id="meeting-name-box">
+      <h2>Enter meeting display name</h2>
+      <label for="meeting-name">Meeting display name</label>
+      <input
+        type="text"
+        id="meeting-name"
+        maxlength="40"
+        autocomplete="off"
+      />
+      <div id="meeting-name-error"></div>
+      <div id="meeting-name-actions">
+        <button id="meeting-logout-btn" type="button">Log out</button>
+        <button id="join-meeting-btn" type="button">Join meeting</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="topbar">
+    <div class="who">
+      Signed in as <strong id="who-email"></strong>
+      &middot; role: <strong id="who-role"></strong>
+      &middot; meeting name: <strong id="who-name">Not joined</strong>
+    </div>
+    <button id="logout-btn">Log out</button>
+  </div>
+
+  <div id="status-line" style="display:none;">
+    <span id="status-dot"></span>
+    <span id="status-text">Connecting…</span>
+  </div>
+
+  <div id="main-grid">
+    <div id="video-panel">
+      <div id="video-frame"></div>
+    </div>
+
+    <div id="vitals-panel" style="display:none;">
+      <h2>Vitals</h2>
+
+      <div id="patient-selector-wrap">
+        <label for="patient-select">Demo patient</label>
+        <select id="patient-select">
+          <option value="CARD-001">Patient Alpha — CARD-001</option>
+          <option value="CARD-002">Patient Bravo — CARD-002</option>
+          <option value="CARD-003">Patient Charlie — CARD-003</option>
+          <option value="CARD-004">Patient Delta — CARD-004</option>
+          <option value="CARD-005">Patient Echo — CARD-005</option>
+        </select>
+      </div>
+
+      <div id="vitals-meta">CardId: CARD-001</div>
+      <div id="vitals-error"></div>
+      <div id="vitals-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — fill in / adjust as needed
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDITCsiWG-syhmhblKPj0j9OTkYN5MdRbY",
+  authDomain: "vmed-prototype.firebaseapp.com",
+  projectId: "vmed-prototype",
+  storageBucket: "vmed-prototype.firebasestorage.app",
+  messagingSenderId: "1027513406296",
+  appId: "1:1027513406296:web:ef71896276cd1722908b2d",
+  measurementId: "G-JN14QNT1R6"
+};
+
+const DAILY_ROOM_URL = "https://io3.daily.co/io3";
+
+const FEMET_CONFIG = {
+  GROUP_NO: "VMedDemoGroup",
+};
+
+const DEMO_PATIENTS = {
+  "CARD-001": "Patient Alpha",
+  "CARD-002": "Patient Bravo",
+  "CARD-003": "Patient Charlie",
+  "CARD-004": "Patient Delta",
+  "CARD-005": "Patient Echo",
+};
+
+const VITALS_POLL_MS = 15000;
+
+/* ============================================================
+   Firebase init
+   ============================================================ */
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* ============================================================
+   DOM references
+   ============================================================ */
+const loginScreen = document.getElementById("login-screen");
+const appScreen = document.getElementById("app-screen");
+const loginForm = document.getElementById("login-form");
+const loginSubmit = document.getElementById("login-submit");
+const loginError = document.getElementById("login-error");
+const meetingNameModal = document.getElementById("meeting-name-modal");
+const meetingNameInput = document.getElementById("meeting-name");
+const meetingNameError = document.getElementById("meeting-name-error");
+const joinMeetingBtn = document.getElementById("join-meeting-btn");
+const meetingLogoutBtn = document.getElementById("meeting-logout-btn");
+const whoEmail = document.getElementById("who-email");
+const whoRole = document.getElementById("who-role");
+const whoName = document.getElementById("who-name");
+const logoutBtn = document.getElementById("logout-btn");
+const statusLine = document.getElementById("status-line");
+const statusDot = document.getElementById("status-dot");
+const statusText = document.getElementById("status-text");
+const mainGrid = document.getElementById("main-grid");
+const vitalsPanel = document.getElementById("vitals-panel");
+const patientSelect = document.getElementById("patient-select");
+const vitalsMeta = document.getElementById("vitals-meta");
+const vitalsList = document.getElementById("vitals-list");
+const vitalsError = document.getElementById("vitals-error");
+const videoFrameEl = document.getElementById("video-frame");
+
+let vitalsPollTimer = null;
+let dailyCallFrame = null;
+let meetingDisplayName = "";
+let currentUserRole = null;
+let selectedCardId = patientSelect.value;
+
+/* ============================================================
+   Login
+   ============================================================ */
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  loginError.style.display = "none";
+  loginSubmit.disabled = true;
+  loginSubmit.textContent = "Signing in…";
+
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged below handles the rest
+  } catch (err) {
+    loginError.textContent = err.message || "Sign-in failed.";
+    loginError.style.display = "block";
+    loginSubmit.disabled = false;
+    loginSubmit.textContent = "Sign in";
+  }
+});
+
+async function performLogout() {
+  stopVitalsPolling();
+
+  if (dailyCallFrame) {
+    dailyCallFrame.destroy();
+    dailyCallFrame = null;
+  }
+
+  meetingDisplayName = "";
+  currentUserRole = null;
+  meetingNameInput.value = "";
+  meetingNameError.style.display = "none";
+  meetingNameModal.style.display = "none";
+  whoName.textContent = "Not joined";
+  patientSelect.value = "CARD-001";
+  selectedCardId = "CARD-001";
+  vitalsMeta.textContent = "Patient Alpha · CardId: CARD-001";
+  vitalsList.innerHTML = "";
+  vitalsError.style.display = "none";
+
+  await auth.signOut();
+}
+
+logoutBtn.addEventListener("click", performLogout);
+meetingLogoutBtn.addEventListener("click", performLogout);
+
+/* ============================================================
+   Auth state -> role lookup -> render app
+   ============================================================ */
+auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    appScreen.style.display = "none";
+    loginScreen.style.display = "flex";
+    meetingNameModal.style.display = "none";
+    meetingDisplayName = "";
+    currentUserRole = null;
+    whoName.textContent = "Not joined";
+    loginSubmit.disabled = false;
+    loginSubmit.textContent = "Sign in";
+    return;
+  }
+
+  let role = null;
+  try {
+    const doc = await db.collection("users").doc(user.uid).get();
+    if (doc.exists) {
+      role = doc.data().role;
+    }
+  } catch (err) {
+    console.error("Failed to load role from Firestore:", err);
+  }
+
+  if (!role) {
+    loginError.textContent = "Signed in, but no role found for this account in Firestore.";
+    loginError.style.display = "block";
+    loginSubmit.disabled = false;
+    loginSubmit.textContent = "Sign in";
+    await auth.signOut();
+    return;
+  }
+
+  loginScreen.style.display = "none";
+  appScreen.style.display = "flex";
+  whoEmail.textContent = user.email;
+  whoRole.textContent = role;
+  whoName.textContent = "Not joined";
+  currentUserRole = role;
+
+  renderForRole(role);
+
+  if (role === "admin" || role === "clinician") {
+    mainGrid.classList.add("with-vitals");
+    vitalsPanel.style.display = "flex";
+    selectedCardId = patientSelect.value;
+    vitalsMeta.textContent =
+      `${DEMO_PATIENTS[selectedCardId]} · CardId: ${selectedCardId}`;
+  } else {
+    mainGrid.classList.remove("with-vitals");
+    vitalsPanel.style.display = "none";
+  }
+
+  meetingDisplayName = "";
+  meetingNameInput.value = "";
+  meetingNameError.style.display = "none";
+  meetingNameModal.style.display = "flex";
+  setTimeout(() => meetingNameInput.focus(), 0);
+});
+
+
+joinMeetingBtn.addEventListener("click", async () => {
+  const enteredName = meetingNameInput.value.trim();
+
+  if (!enteredName) {
+    meetingNameError.textContent = "Please enter a meeting display name.";
+    meetingNameError.style.display = "block";
+    meetingNameInput.focus();
+    return;
+  }
+
+  if (!currentUserRole) {
+    meetingNameError.textContent = "User role is not ready. Please log out and sign in again.";
+    meetingNameError.style.display = "block";
+    return;
+  }
+
+  joinMeetingBtn.disabled = true;
+  joinMeetingBtn.textContent = "Joining…";
+  meetingNameError.style.display = "none";
+
+  try {
+    meetingDisplayName = enteredName;
+    whoName.textContent = meetingDisplayName;
+
+    // Hide this prompt before Daily starts joining. Daily may need to show
+    // its own camera/microphone/pre-join screen, which would otherwise be
+    // blocked behind this modal.
+    meetingNameModal.style.display = "none";
+
+    if (currentUserRole === "admin" || currentUserRole === "clinician") {
+      startVitalsPolling();
+    }
+
+    await joinDailyCall(currentUserRole, meetingDisplayName);
+  } catch (err) {
+    console.error(err);
+
+    // Re-open the prompt only if joining really fails.
+    meetingNameModal.style.display = "flex";
+    meetingNameError.textContent = err.message || "Could not join the meeting.";
+    meetingNameError.style.display = "block";
+  } finally {
+    joinMeetingBtn.disabled = false;
+    joinMeetingBtn.textContent = "Join meeting";
+  }
+});
+
+meetingNameInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    joinMeetingBtn.click();
+  }
+});
+
+function renderForRole(role) {
+  // admin: video + vitals + status line
+  // clinician: video + vitals
+  // patient: video only
+  statusLine.style.display = (role === "admin") ? "flex" : "none";
+}
+
+/* ============================================================
+   Daily.co video (prebuilt call frame, so we can still read
+   network-quality events for the admin status line)
+   ============================================================ */
+async function joinDailyCall(role, displayName) {
+  dailyCallFrame = DailyIframe.createFrame(videoFrameEl, {
+    iframeStyle: {
+      width: "100%",
+      height: "100%",
+      minHeight: "420px",
+      border: "0",
+    },
+    showLeaveButton: false,
+  });
+
+  await dailyCallFrame.join({
+    url: DAILY_ROOM_URL,
+    userName: displayName,
+  });
+
+  if (role === "admin") {
+    dailyCallFrame.on("network-quality-change", (event) => {
+      updateConnectionStatus(event?.threshold || "unknown");
+    });
+    dailyCallFrame.on("joining-meeting", () => updateConnectionStatus("connecting"));
+    dailyCallFrame.on("joined-meeting", () => updateConnectionStatus("good"));
+    dailyCallFrame.on("left-meeting", () => updateConnectionStatus("unknown"));
+    dailyCallFrame.on("error", () => updateConnectionStatus("bad"));
+  }
+}
+
+function updateConnectionStatus(level) {
+  statusDot.className = "";
+  if (level === "good") {
+    statusDot.classList.add("good");
+    statusText.textContent = "Connection: good";
+  } else if (level === "low" || level === "medium") {
+    statusDot.classList.add("medium");
+    statusText.textContent = "Connection: degraded";
+  } else if (level === "very-low" || level === "bad") {
+    statusDot.classList.add("bad");
+    statusText.textContent = "Connection: poor";
+  } else if (level === "connecting") {
+    statusText.textContent = "Connecting…";
+  } else {
+    statusText.textContent = "Connection: unknown";
+  }
+}
+
+/* ============================================================
+   FEMET vitals — Netlify serverless function and polling
+   ============================================================ */
+
+// The browser calls a same-origin Netlify Function. The function keeps the
+// FEMET credentials and FEMET bearer token on the server side.
+const VITALS_FUNCTION_URL = "/.netlify/functions/femet-vitals";
+
+async function fetchVitalsOnce() {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) {
+    throw new Error("Firebase session is not available.");
+  }
+
+  // Send a Firebase ID token so the Netlify Function can verify that the
+  // caller is signed in before it accesses FEMET.
+  const firebaseIdToken = await firebaseUser.getIdToken();
+
+  // FEMET period endpoint expects Unix epoch milliseconds.
+  // Use a broad window so the pre-seeded demo record remains retrievable.
+  const startTime = 0;
+  const endTime = Date.now() + 24 * 60 * 60 * 1000;
+
+  const url =
+    `${VITALS_FUNCTION_URL}` +
+    `?groupNo=${encodeURIComponent(FEMET_CONFIG.GROUP_NO)}` +
+    `&cardId=${encodeURIComponent(selectedCardId)}` +
+    `&startTime=${encodeURIComponent(startTime)}` +
+    `&endTime=${encodeURIComponent(endTime)}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${firebaseIdToken}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Vitals request failed: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
+function renderVitals(data) {
+  vitalsError.style.display = "none";
+  vitalsList.innerHTML = "";
+
+  // Field names are unconfirmed, so just render whatever key-value
+  // pairs come back, flattening one level if the payload is nested
+  // under a common wrapper key like "data".
+  const payload = (data && typeof data === "object" && "data" in data) ? data.data : data;
+  const record = Array.isArray(payload)
+    ? [...payload].sort(
+        (a, b) => Number(b?.measureTimestamp || 0) - Number(a?.measureTimestamp || 0)
+      )[0]
+    : payload;
+
+  if (!record || typeof record !== "object") {
+    vitalsList.innerHTML = `<div class="vital-row"><span class="k">No data</span><span class="v">—</span></div>`;
+    return;
+  }
+
+  for (const [key, value] of Object.entries(record)) {
+    const row = document.createElement("div");
+    row.className = "vital-row";
+    row.innerHTML = `<span class="k">${key}</span><span class="v">${typeof value === "object" ? JSON.stringify(value) : value}</span>`;
+    vitalsList.appendChild(row);
+  }
+}
+
+patientSelect.addEventListener("change", async () => {
+  selectedCardId = patientSelect.value;
+  vitalsMeta.textContent =
+    `${DEMO_PATIENTS[selectedCardId]} · CardId: ${selectedCardId}`;
+
+  vitalsError.style.display = "none";
+  vitalsList.innerHTML =
+    `<div class="vital-row"><span class="k">Loading</span><span class="v">…</span></div>`;
+
+  // Only request immediately if this role has already joined the meeting
+  // and FEMET polling has started.
+  if (vitalsPollTimer) {
+    await pollVitals();
+  }
+});
+
+async function pollVitals() {
+  try {
+    const data = await fetchVitalsOnce();
+    renderVitals(data);
+  } catch (err) {
+    console.error(err);
+    vitalsError.textContent = `Vitals unavailable: ${err.message}`;
+    vitalsError.style.display = "block";
+  }
+}
+
+function startVitalsPolling() {
+  pollVitals(); // immediate first fetch
+  vitalsPollTimer = setInterval(pollVitals, VITALS_POLL_MS);
+}
+
+function stopVitalsPolling() {
+  if (vitalsPollTimer) {
+    clearInterval(vitalsPollTimer);
+    vitalsPollTimer = null;
+  }
+}
+</script>
+</body>
+</html>
