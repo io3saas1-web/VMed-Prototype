@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>VMed Prototype</title>
-<!-- Netlify deployment version: FEMET access runs through a serverless function. -->
+<!-- Netlify version with current vitals and historical trend charts. -->
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -196,18 +196,139 @@
   #patient-select:focus {
     border-color: var(--accent);
   }
-  #vitals-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
-  .vital-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 10px;
+  #current-vitals-title,
+  #trend-title {
+    margin: 4px 0 0;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  #latest-vitals {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .latest-card {
     background: #0f1720;
     border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 13px;
+    border-radius: 8px;
+    padding: 10px;
+    min-width: 0;
   }
-  .vital-row .k { color: var(--muted); }
-  .vital-row .v { font-weight: 600; }
+
+  .latest-card .metric-label {
+    color: var(--muted);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .latest-card .metric-value {
+    margin-top: 6px;
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+
+  .latest-card .metric-unit {
+    margin-left: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  #latest-measured,
+  #trend-meta {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  #trend-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  #metric-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .metric-tab {
+    padding: 7px 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #0f1720;
+    color: var(--muted);
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .metric-tab:hover {
+    border-color: #486078;
+    color: var(--text);
+  }
+
+  .metric-tab.active {
+    border-color: var(--accent);
+    background: rgba(41, 182, 246, 0.12);
+    color: var(--text);
+  }
+
+  #trend-chart-card {
+    background: #0f1720;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+  }
+
+  #trend-chart-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  #trend-chart-label {
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  #trend-chart-latest {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  #trend-chart {
+    min-height: 210px;
+  }
+
+  #trend-chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .chart-empty {
+    display: grid;
+    place-items: center;
+    min-height: 190px;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+  }
+
+  @media (max-width: 1120px) {
+    #latest-vitals {
+      grid-template-columns: 1fr;
+    }
+  }
+
   #vitals-error {
     color: var(--bad);
     font-size: 13px;
@@ -367,7 +488,53 @@
 
       <div id="vitals-meta">CardId: CARD-001</div>
       <div id="vitals-error"></div>
-      <div id="vitals-list"></div>
+
+      <div id="current-vitals-title">Current vitals</div>
+
+      <div id="latest-vitals">
+        <div class="latest-card">
+          <div class="metric-label">Heart rate</div>
+          <div class="metric-value">
+            <span id="latest-hr">—</span><span class="metric-unit">bpm</span>
+          </div>
+        </div>
+
+        <div class="latest-card">
+          <div class="metric-label">SpO₂</div>
+          <div class="metric-value">
+            <span id="latest-spo2">—</span><span class="metric-unit">%</span>
+          </div>
+        </div>
+
+        <div class="latest-card">
+          <div class="metric-label">Temperature</div>
+          <div class="metric-value">
+            <span id="latest-temp">—</span><span class="metric-unit">°C</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="latest-measured">Latest measurement: —</div>
+
+      <div id="trend-header">
+        <div id="trend-title">Vital trends</div>
+        <div id="trend-meta">0 readings</div>
+      </div>
+
+      <div id="metric-tabs">
+        <button class="metric-tab active" data-metric="A001" type="button">Heart rate</button>
+        <button class="metric-tab" data-metric="A002" type="button">SpO₂</button>
+        <button class="metric-tab" data-metric="A003" type="button">Temperature</button>
+      </div>
+
+      <div id="trend-chart-card">
+        <div id="trend-chart-heading">
+          <span id="trend-chart-label">Heart rate</span>
+          <span id="trend-chart-latest">—</span>
+        </div>
+        <div id="trend-chart"><div class="chart-empty">Join the meeting to load trend data.</div></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -433,8 +600,16 @@ const mainGrid = document.getElementById("main-grid");
 const vitalsPanel = document.getElementById("vitals-panel");
 const patientSelect = document.getElementById("patient-select");
 const vitalsMeta = document.getElementById("vitals-meta");
-const vitalsList = document.getElementById("vitals-list");
 const vitalsError = document.getElementById("vitals-error");
+const latestHr = document.getElementById("latest-hr");
+const latestSpo2 = document.getElementById("latest-spo2");
+const latestTemp = document.getElementById("latest-temp");
+const latestMeasured = document.getElementById("latest-measured");
+const trendMeta = document.getElementById("trend-meta");
+const trendChart = document.getElementById("trend-chart");
+const trendChartLabel = document.getElementById("trend-chart-label");
+const trendChartLatest = document.getElementById("trend-chart-latest");
+const metricTabs = Array.from(document.querySelectorAll(".metric-tab"));
 const videoFrameEl = document.getElementById("video-frame");
 
 let vitalsPollTimer = null;
@@ -442,6 +617,8 @@ let dailyCallFrame = null;
 let meetingDisplayName = "";
 let currentUserRole = null;
 let selectedCardId = patientSelect.value;
+let selectedTrendMetric = "A001";
+let latestVitalsRecords = [];
 
 /* ============================================================
    Login
@@ -483,8 +660,8 @@ async function performLogout() {
   patientSelect.value = "CARD-001";
   selectedCardId = "CARD-001";
   vitalsMeta.textContent = "Patient Alpha · CardId: CARD-001";
-  vitalsList.innerHTML = "";
   vitalsError.style.display = "none";
+  resetVitalsDashboard();
 
   await auth.signOut();
 }
@@ -669,8 +846,8 @@ function updateConnectionStatus(level) {
    FEMET vitals — Netlify serverless function and polling
    ============================================================ */
 
-// The browser calls a same-origin Netlify Function. The function keeps the
-// FEMET credentials and FEMET bearer token on the server side.
+// The browser calls a same-origin Netlify Function. FEMET credentials and
+// bearer tokens remain on the server side.
 const VITALS_FUNCTION_URL = "/.netlify/functions/femet-vitals";
 
 async function fetchVitalsOnce() {
@@ -679,12 +856,10 @@ async function fetchVitalsOnce() {
     throw new Error("Firebase session is not available.");
   }
 
-  // Send a Firebase ID token so the Netlify Function can verify that the
-  // caller is signed in before it accesses FEMET.
   const firebaseIdToken = await firebaseUser.getIdToken();
 
   // FEMET period endpoint expects Unix epoch milliseconds.
-  // Use a broad window so the pre-seeded demo record remains retrievable.
+  // A broad range returns the historical readings required by the trend chart.
   const startTime = 0;
   const endTime = Date.now() + 24 * 60 * 60 * 1000;
 
@@ -712,32 +887,352 @@ async function fetchVitalsOnce() {
   return res.json();
 }
 
-function renderVitals(data) {
-  vitalsError.style.display = "none";
-  vitalsList.innerHTML = "";
+const METRIC_CONFIG = {
+  A001: {
+    label: "Heart rate",
+    unit: "bpm",
+    decimals: 0,
+    transform: (value) => value,
+  },
+  A002: {
+    label: "SpO₂",
+    unit: "%",
+    decimals: 0,
+    transform: (value) => value,
+  },
+  A003: {
+    label: "Temperature",
+    unit: "°C",
+    decimals: 1,
+    transform: (value) => value / 10,
+  },
+};
 
-  // Field names are unconfirmed, so just render whatever key-value
-  // pairs come back, flattening one level if the payload is nested
-  // under a common wrapper key like "data".
-  const payload = (data && typeof data === "object" && "data" in data) ? data.data : data;
-  const record = Array.isArray(payload)
-    ? [...payload].sort(
-        (a, b) => Number(b?.measureTimestamp || 0) - Number(a?.measureTimestamp || 0)
-      )[0]
-    : payload;
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
-  if (!record || typeof record !== "object") {
-    vitalsList.innerHTML = `<div class="vital-row"><span class="k">No data</span><span class="v">—</span></div>`;
+function parseVitalSignDetails(value) {
+  if (!value) return {};
+
+  if (typeof value === "string") {
+    try {
+      return parseVitalSignDetails(JSON.parse(value));
+    } catch {
+      return {};
+    }
+  }
+
+  if (Array.isArray(value)) {
+    return value.reduce((result, item) => {
+      const key = item?.Key ?? item?.key;
+      const itemValue = item?.Value ?? item?.value;
+      if (key != null) result[String(key)] = itemValue;
+      return result;
+    }, {});
+  }
+
+  if (typeof value === "object") {
+    return value;
+  }
+
+  return {};
+}
+
+function normaliseVitalsRecords(data) {
+  const payload =
+    (data && typeof data === "object" && "data" in data)
+      ? data.data
+      : data;
+
+  const records = Array.isArray(payload)
+    ? payload
+    : (payload && typeof payload === "object" ? [payload] : []);
+
+  return records
+    .filter((record) => record && typeof record === "object")
+    .sort(
+      (a, b) =>
+        Number(a?.measureTimestamp || 0) -
+        Number(b?.measureTimestamp || 0)
+    );
+}
+
+function metricValue(record, key) {
+  const config = METRIC_CONFIG[key];
+  const details = parseVitalSignDetails(record?.vitalSignDetails);
+  const rawValue = Number(details[key]);
+
+  if (!config || !Number.isFinite(rawValue)) return null;
+  return config.transform(rawValue);
+}
+
+function formatMetricValue(value, metricKey) {
+  const config = METRIC_CONFIG[metricKey];
+  if (!config || !Number.isFinite(value)) return "—";
+  return value.toFixed(config.decimals);
+}
+
+function formatMeasurementTime(timestamp) {
+  const numeric = Number(timestamp);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "—";
+
+  return new Date(numeric).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatChartTime(timestamp) {
+  const numeric = Number(timestamp);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "";
+
+  return new Date(numeric).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function resetVitalsDashboard() {
+  latestHr.textContent = "—";
+  latestSpo2.textContent = "—";
+  latestTemp.textContent = "—";
+  latestMeasured.textContent = "Latest measurement: —";
+  trendMeta.textContent = "0 readings";
+  trendChartLatest.textContent = "—";
+  trendChart.innerHTML =
+    '<div class="chart-empty">No trend data available.</div>';
+  latestVitalsRecords = [];
+}
+
+function renderCurrentVitals(record) {
+  const hr = metricValue(record, "A001");
+  const spo2 = metricValue(record, "A002");
+  const temp = metricValue(record, "A003");
+
+  latestHr.textContent = formatMetricValue(hr, "A001");
+  latestSpo2.textContent = formatMetricValue(spo2, "A002");
+  latestTemp.textContent = formatMetricValue(temp, "A003");
+  latestMeasured.textContent =
+    `Latest measurement: ${formatMeasurementTime(record?.measureTimestamp)}`;
+}
+
+function renderTrendChart(records, metricKey) {
+  const config = METRIC_CONFIG[metricKey];
+  trendChartLabel.textContent = config.label;
+
+  // Use only the 12 most recent valid readings for the trend.
+  // This prevents an older seed record from stretching the time axis and
+  // compressing the recent readings into a cluster on the right.
+  const points = records
+    .map((record) => ({
+      timestamp: Number(record?.measureTimestamp || 0),
+      value: metricValue(record, metricKey),
+    }))
+    .filter(
+      (point) =>
+        Number.isFinite(point.timestamp) &&
+        point.timestamp > 0 &&
+        Number.isFinite(point.value)
+    )
+    .slice(-12);
+
+  trendMeta.textContent =
+    `${points.length} recent reading${points.length === 1 ? "" : "s"}`;
+
+  if (points.length === 0) {
+    trendChartLatest.textContent = "—";
+    trendChart.innerHTML =
+      '<div class="chart-empty">No trend data available for this metric.</div>';
     return;
   }
 
-  for (const [key, value] of Object.entries(record)) {
-    const row = document.createElement("div");
-    row.className = "vital-row";
-    row.innerHTML = `<span class="k">${key}</span><span class="v">${typeof value === "object" ? JSON.stringify(value) : value}</span>`;
-    vitalsList.appendChild(row);
+  const latestPoint = points[points.length - 1];
+  trendChartLatest.textContent =
+    `${formatMetricValue(latestPoint.value, metricKey)} ${config.unit}`;
+
+  if (points.length === 1) {
+    trendChart.innerHTML =
+      '<div class="chart-empty">Post more readings to display a trend line.</div>';
+    return;
   }
+
+  const width = 560;
+  const height = 225;
+  const margin = { top: 18, right: 18, bottom: 38, left: 48 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+
+  const values = points.map((point) => point.value);
+  let minValue = Math.min(...values);
+  let maxValue = Math.max(...values);
+
+  const rawRange = maxValue - minValue;
+  const minimumPadding =
+    metricKey === "A003" ? 0.2 : metricKey === "A002" ? 1 : 3;
+  const padding = Math.max(rawRange * 0.18, minimumPadding);
+
+  minValue -= padding;
+  maxValue += padding;
+
+  if (minValue === maxValue) {
+    minValue -= 1;
+    maxValue += 1;
+  }
+
+  const minTimestamp = points[0].timestamp;
+  const maxTimestamp = points[points.length - 1].timestamp;
+  const timestampRange = Math.max(maxTimestamp - minTimestamp, 1);
+
+  const xFor = (timestamp) =>
+    margin.left +
+    ((timestamp - minTimestamp) / timestampRange) * plotWidth;
+
+  const yFor = (value) =>
+    margin.top +
+    ((maxValue - value) / (maxValue - minValue)) * plotHeight;
+
+  const pathData = points
+    .map((point, index) => {
+      const x = xFor(point.timestamp).toFixed(2);
+      const y = yFor(point.value).toFixed(2);
+      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+    })
+    .join(" ");
+
+  const horizontalGrid = Array.from({ length: 5 }, (_, index) => {
+    const ratio = index / 4;
+    const y = margin.top + ratio * plotHeight;
+    const value = maxValue - ratio * (maxValue - minValue);
+
+    return `
+      <line
+        x1="${margin.left}"
+        y1="${y.toFixed(2)}"
+        x2="${width - margin.right}"
+        y2="${y.toFixed(2)}"
+        stroke="#243444"
+        stroke-width="1"
+      />
+      <text
+        x="${margin.left - 8}"
+        y="${(y + 4).toFixed(2)}"
+        text-anchor="end"
+        fill="#7f91a3"
+        font-size="10"
+      >${escapeHtml(formatMetricValue(value, metricKey))}</text>
+    `;
+  }).join("");
+
+  const labelIndexes = Array.from(
+    new Set([
+      0,
+      Math.floor((points.length - 1) / 2),
+      points.length - 1,
+    ])
+  );
+
+  const xLabels = labelIndexes.map((index) => {
+    const point = points[index];
+    const x = xFor(point.timestamp);
+    return `
+      <text
+        x="${x.toFixed(2)}"
+        y="${height - 12}"
+        text-anchor="${index === 0 ? "start" : index === points.length - 1 ? "end" : "middle"}"
+        fill="#7f91a3"
+        font-size="10"
+      >${escapeHtml(formatChartTime(point.timestamp))}</text>
+    `;
+  }).join("");
+
+  const circles = points.map((point) => {
+    const x = xFor(point.timestamp);
+    const y = yFor(point.value);
+    const tooltip =
+      `${formatMeasurementTime(point.timestamp)} — ` +
+      `${formatMetricValue(point.value, metricKey)} ${config.unit}`;
+
+    return `
+      <circle
+        cx="${x.toFixed(2)}"
+        cy="${y.toFixed(2)}"
+        r="3.2"
+        fill="#29b6f6"
+        stroke="#0f1720"
+        stroke-width="1.5"
+      >
+        <title>${escapeHtml(tooltip)}</title>
+      </circle>
+    `;
+  }).join("");
+
+  trendChart.innerHTML = `
+    <svg
+      viewBox="0 0 ${width} ${height}"
+      role="img"
+      aria-label="${escapeHtml(config.label)} trend chart"
+    >
+      ${horizontalGrid}
+      <line
+        x1="${margin.left}"
+        y1="${margin.top + plotHeight}"
+        x2="${width - margin.right}"
+        y2="${margin.top + plotHeight}"
+        stroke="#486078"
+        stroke-width="1"
+      />
+      <path
+        d="${pathData}"
+        fill="none"
+        stroke="#29b6f6"
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      ${circles}
+      ${xLabels}
+    </svg>
+  `;
 }
+
+function renderVitals(data) {
+  vitalsError.style.display = "none";
+
+  const records = normaliseVitalsRecords(data);
+  latestVitalsRecords = records;
+
+  if (records.length === 0) {
+    resetVitalsDashboard();
+    return;
+  }
+
+  const latestRecord = records[records.length - 1];
+  renderCurrentVitals(latestRecord);
+  renderTrendChart(records, selectedTrendMetric);
+}
+
+metricTabs.forEach((button) => {
+  button.addEventListener("click", () => {
+    selectedTrendMetric = button.dataset.metric;
+
+    metricTabs.forEach((tab) => {
+      tab.classList.toggle(
+        "active",
+        tab.dataset.metric === selectedTrendMetric
+      );
+    });
+
+    renderTrendChart(latestVitalsRecords, selectedTrendMetric);
+  });
+});
 
 patientSelect.addEventListener("change", async () => {
   selectedCardId = patientSelect.value;
@@ -745,8 +1240,9 @@ patientSelect.addEventListener("change", async () => {
     `${DEMO_PATIENTS[selectedCardId]} · CardId: ${selectedCardId}`;
 
   vitalsError.style.display = "none";
-  vitalsList.innerHTML =
-    `<div class="vital-row"><span class="k">Loading</span><span class="v">…</span></div>`;
+  resetVitalsDashboard();
+  trendChart.innerHTML =
+    '<div class="chart-empty">Loading trend data…</div>';
 
   // Only request immediately if this role has already joined the meeting
   // and FEMET polling has started.
